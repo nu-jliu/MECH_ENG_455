@@ -1,7 +1,7 @@
-SRCS=$(wildcard *.md)
-OBJS=$(SRCS:.md=.pdf)
+MDS=$(wildcard *.md)
+PDFS=$(MDS:.md=.pdf)
 
-all: $(OBJS)
+all: $(PDFS)
 
 %.pdf: %.md
 	pandoc -o $@ $^

@@ -1,3 +1,6 @@
+---
+geometry: margin=1cm
+---
 # ME455 Active Learning Homework 1
 **Author**: Allen Liu
 
@@ -12,3 +15,6 @@
 
 ## Problem 4
 ![](part4.png)
+
+## Problem 5
+![](part5.png)

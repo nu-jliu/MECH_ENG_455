@@ -17,13 +17,13 @@ map = zeros(N+1, N+1);
 n = 0;
 for i = 1:N+1
     for j = 1:N+1
-        x = [(i-1)/N; (j-1)/N];
+        x = [(j-1)/N; (i-1)/N];
 
-        f_val = positivity(x, s);
+        f_val = f_x(x, s);
         % display(f_val);
         n = n + 1;
 
-        map(j, i) = f_val;
+        map(i, j) = f_val;
     end
 end
 
@@ -37,7 +37,7 @@ negInd = 1;
 for i = 1:100
     x_val = rand();
     y_val = rand();
-    f_val = positivity([x_val; y_val], s);
+    f_val = f_x([x_val; y_val], s);
 
     measure = rand();
     if (measure < f_val)
@@ -58,7 +58,7 @@ imagesc(xlim, ylim, map)
 colormap gray
 colorbar
 
-plot(0.3, 0.4, MarkerSize=20, LineStyle='none', Marker='x', DisplayName='Source')
+plot(0.3, 0.4, MarkerSize=20, LineStyle='none', LineWidth=5, Marker='x', DisplayName='Source')
 plot(positive(1, :), positive(2, :), LineStyle='none', Color='g', Marker='.', DisplayName='Positive Signals')
 plot(negative(1, :), negative(2, :), LineStyle='none', Color='r', Marker='.', DisplayName='Negative Signals')
 hold off
@@ -78,8 +78,8 @@ saveas(gcf, 'part1.png')
 map_est = zeros(N+1, N+1);
 for i = 1:N+1
     for j = 1:N+1
-        x_val = (i-1)/N;
-        y_val = (j-1)/N;
+        x_val = (j-1)/N;
+        y_val = (i-1)/N;
 
         map_est(i, j) = l_source([x_val; y_val], positive, negative);
     end
@@ -92,6 +92,7 @@ imagesc(xlim, ylim, map_est)
 colormap gray
 colorbar
 
+plot(0.3, 0.4, MarkerSize=20, LineStyle='none', LineWidth=5, Marker='x', DisplayName='Source');
 plot(positive(1, :), positive(2, :), Color='g', LineStyle='none', Marker='.', DisplayName='Positive Signals')
 plot(negative(1, :), negative(2, :), Color='r', LineStyle='none', Marker='.', DisplayName='Negative Signals')
 
@@ -118,7 +119,7 @@ val = rand();
 for i = 1:100
     x_val = val;
     y_val = val;
-    f_val = positivity([x_val; y_val], s);
+    f_val = f_x([x_val; y_val], s);
 
     measure = rand();
     if (measure < f_val)
@@ -133,8 +134,8 @@ end
 map_est = zeros(N+1, N+1);
 for i = 1:N+1
     for j = 1:N+1
-        x_val = (i-1)/N;
-        y_val = (j-1)/N;
+        x_val = (j-1)/N;
+        y_val = (i-1)/N;
 
         map_est(i, j) = l_source([x_val; y_val], positive, negative);
     end
@@ -166,16 +167,31 @@ set(gcf, 'Color', 'w')
 saveas(gcf, 'part3.png')
 
 %% Part 4
-figure(Position=[200 200 2000 800])
+figure(Position=[200 200 2000 1000])
 x = [rand(); rand()];
+f_val = f_x(x, s);
 
+map_b = ones(N+1, N+1);
 
 for i = 1:10
-    subplot(2, 5, i)
-    map = ones(N+1, N+1);
-    imagesc(xlim, ylim, map)
+    measure = f_val > rand();
+
+    map_b = update_map(map_b, x, measure);
+
+    subplot(2, 5, i);
+    hold on
+    imagesc(xlim, ylim, map_b)
     colormap gray
     colorbar
+
+    if measure
+        plot(x(1), x(2), LineStyle='none', Marker='.', Color='g', DisplayName='Positive Signal')
+    else
+        plot(x(1), x(2), LineStyle='none', Marker='.', Color='r', DisplayName='Negative Signal')
+    end
+
+    hold off
+    legend show
 
     set(gca, 'XLim', [0 1])
     set(gca, 'YLim', [0 1])
@@ -184,12 +200,48 @@ end
 set(gcf, 'Color', 'w')
 saveas(gcf, 'part4.png')
 
-%% Helper Functions
-function f_x = positivity(x, s)
-    f_x = exp(-100*(norm(x-s)-0.2)^2);
+%% Part 5
+figure(Position=[200 200 2000 1000])
+
+
+map_c = ones(N+1, N+1);
+
+for i = 1:10
+    x = [rand(); rand()];
+    f_val = f_x(x, s);
+
+    measure = f_val > rand();
+
+    map_c = update_map(map_c, x, measure);
+
+    subplot(2, 5, i);
+    hold on
+    imagesc(xlim, ylim, map_c)
+    colormap gray
+    colorbar
+
+    if measure
+        plot(x(1), x(2), LineStyle='none', Marker='.', Color='g', DisplayName='Positive Signal')
+    else
+        plot(x(1), x(2), LineStyle='none', Marker='.', Color='r', DisplayName='Negative Signal')
+    end
+
+    hold off
+    legend show
+
+    set(gca, 'XLim', [0 1])
+    set(gca, 'YLim', [0 1])
 end
 
-function p_x = l_reading(x, s, z)
+set(gcf, 'Color', 'w')
+saveas(gcf, 'part5.png')
+
+%% Helper Functions
+function fx = f_x(x, s)
+    fx = exp(-100*(norm(x-s)-0.2)^2);
+end
+
+function p_x = p_zxs(x, s, z)
     if z
         p_x = exp(-100*(norm(x-s)-0.2)^2);
     else
@@ -204,23 +256,37 @@ function l_s = l_source(s, pos, neg)
 
     for i = 1:n_pos
         x = pos(:, i);
-        l_s = l_s*l_reading(x, s, true);
+        l_s = l_s*p_zxs(x, s, true);
     end
 
     for i = 1:n_neg
         x = neg(:, i);
-        l_s = l_s*l_reading(x, s, false);
+        l_s = l_s*p_zxs(x, s, false);
     end
 
 end
 
-function map = update_map(map, x, measure)
+function map = update_map(map, x, z)
     row = size(map, 1);
     col = size(map, 2);
     
+    px = 0;
+    dx = 1/(row*col);
+    for i = 1:row
+        for j = 1:col
+            s = [(j-1)/(col-1); (i-1)/(row-1)];
+            pzx = p_zxs(x, s, z);
+            bx = map(i, j);
+            px = px + pzx*bx*dx;
+        end
+    end
+
     for i = 1 : row
         for j = 1 : col
-            s = [(j-1)/100; (i-1)/100];
+            s = [(j-1)/(col-1); (i-1)/(row-1)];
+            pzx = p_zxs(x, s, z);
+            bx = map(i, j);
+            map(i, j) = pzx*bx/px;
         end
     end
 end
