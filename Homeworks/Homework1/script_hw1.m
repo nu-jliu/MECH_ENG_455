@@ -114,11 +114,12 @@ negative = [];
 posInd = 1;
 negInd = 1;
 
-val = rand();
+x_val = rand();
+y_val = rand();
 
 for i = 1:100
-    x_val = val;
-    y_val = val;
+    % x_val = val;
+    % y_val = val;
     f_val = f_x([x_val; y_val], s);
 
     measure = rand();
@@ -164,11 +165,12 @@ set(gca, 'XLim', [0 1])
 set(gca, 'YLim', [0 1])
 set(gcf, 'Color', 'w')
 
-saveas(gcf, 'part3.png')
+saveas(gcf, 'part3_3.png')
 
 %% Part 4
 figure(Position=[200 200 2000 1000])
 x = [rand(); rand()];
+% x = [.3; .4];
 f_val = f_x(x, s);
 
 map_b = ones(N+1, N+1);

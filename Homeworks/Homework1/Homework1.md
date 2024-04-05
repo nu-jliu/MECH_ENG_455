@@ -13,6 +13,10 @@ geometry: margin=1cm
 ## Problem 3
 ![](part3.png)
 
+![](part3_2.png)
+
+![](part3_3.png)
+
 ## Problem 4
 ![](part4.png)
 
