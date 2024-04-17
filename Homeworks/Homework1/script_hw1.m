@@ -165,11 +165,15 @@ set(gca, 'XLim', [0 1])
 set(gca, 'YLim', [0 1])
 set(gcf, 'Color', 'w')
 
-saveas(gcf, 'part3_3.png')
+saveas(gcf, 'part3.png')
 
 %% Part 4
 figure(Position=[200 200 2000 1000])
 x = [rand(); rand()];
+pos = [];
+neg = [];
+posInd = 1;
+negInd = 1;
 % x = [.3; .4];
 f_val = f_x(x, s);
 
@@ -187,9 +191,19 @@ for i = 1:10
     colorbar
 
     if measure
-        plot(x(1), x(2), LineStyle='none', Marker='.', Color='g', DisplayName='Positive Signal')
+        pos(:, posInd) = x;
+        posInd = posInd + 1;
     else
-        plot(x(1), x(2), LineStyle='none', Marker='.', Color='r', DisplayName='Negative Signal')
+        neg(:, negInd) = x;
+        negInd = negInd + 1;
+    end
+
+    if size(pos, 2) > 0
+        plot(pos(1, :), pos(2, :), LineStyle='none', Marker='.', Color='g', DisplayName='Positive Signal')
+    end
+
+    if size(neg, 2) > 0
+        plot(neg(1, :), neg(2, :), LineStyle='none', Marker='.', Color='r', DisplayName='Negative Signal')
     end
 
     hold off
@@ -205,6 +219,10 @@ saveas(gcf, 'part4.png')
 %% Part 5
 figure(Position=[200 200 2000 1000])
 
+pos = [];
+neg = [];
+posInd = 1;
+negInd = 1;
 
 map_c = ones(N+1, N+1);
 
@@ -223,9 +241,19 @@ for i = 1:10
     colorbar
 
     if measure
-        plot(x(1), x(2), LineStyle='none', Marker='.', Color='g', DisplayName='Positive Signal')
+        pos(:, posInd) = x;
+        posInd = posInd + 1;
     else
-        plot(x(1), x(2), LineStyle='none', Marker='.', Color='r', DisplayName='Negative Signal')
+        neg(:, negInd) = x;
+        negInd = negInd + 1;
+    end
+
+    if size(pos, 2) > 0
+        plot(pos(1, :), pos(2, :), LineStyle='none', Marker='.', Color='g', DisplayName='Positive Signal')
+    end
+
+    if size(neg, 2) > 0
+        plot(neg(1, :), neg(2, :), LineStyle='none', Marker='.', Color='r', DisplayName='Negative Signal')
     end
 
     hold off

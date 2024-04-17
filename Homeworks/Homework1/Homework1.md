@@ -11,7 +11,7 @@ geometry: margin=1cm
 ![](part2.png)
 
 ## Problem 3
-![](part3.png)
+![](part3_1.png)
 
 ![](part3_2.png)
 
