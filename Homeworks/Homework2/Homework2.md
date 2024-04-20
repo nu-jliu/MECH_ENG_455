@@ -6,3 +6,8 @@ geometry: margin=2cm
 
 ## Part 1
 ![](part1.png)
+
+## Part 2
+![](part2.png)
+![](part2_1.png)
+![](part2_2.png)
