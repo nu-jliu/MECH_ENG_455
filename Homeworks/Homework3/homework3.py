@@ -165,9 +165,28 @@ def get_state_from_tf(T):
     return np.array([x, y, theta])
 
 
-def update_plot(frame, line: matplotlib.lines.Line2D, traj):
+def update_plot(
+    frame,
+    line: matplotlib.lines.Line2D,
+    line_part: matplotlib.lines.Line2D,
+    traj,
+    particles,
+    noice,
+):
     line.set_xdata(traj[0, : (frame + 1)])
     line.set_ydata(traj[1, : (frame + 1)])
+
+    # x, y, theta = traj[:, frame]
+
+    # samples = np.random.multivariate_normal(
+    #     mean=np.array([x, y, theta]),
+    #     cov=np.eye(3) * noice,
+    #     size=100,
+    # )
+
+    line_part.set_xdata(particles[0, :, : (frame + 1)].flatten())
+    line_part.set_ydata(particles[1, :, : (frame + 1)].flatten())
+    # print(particles[0, :, :1])
     return (line,)
 
 
@@ -180,12 +199,15 @@ def p2_main(
 ):
     # t_list = np.linspace(start=0.0, stop=T, num=num_samples)
     t_list = np.arange(start=0.0, stop=T, step=dt)
-    num_samples = len(t_list)
+    num_steps = len(t_list)
+    num_samples = 100
     # dt = t_list[1]
     # start_V6 = np.array([0, 0, start[2], start[0], start[1], 0])
     # Tsb = mr.MatrixExp6(mr.VecTose3(start_V6))
 
-    traj = np.zeros(shape=(3, num_samples))
+    traj = np.zeros(shape=(3, num_steps))
+    particles = np.zeros(shape=(3, num_samples, num_steps))
+    particles[2, :, 0] = np.ones(shape=num_samples) * np.pi / 2
     # x, y, theta = get_state_from_tf(Tsb)
     state = copy.deepcopy(start)
     traj[:, 0] = state
@@ -205,14 +227,24 @@ def p2_main(
     Tbbp = mr.MatrixExp6(mr.VecTose3(v6))
 
     print("Start simulating ...")
-    for i in range(num_samples - 1):
+    for i in range(1, num_steps):
         # Tsb = Tsb @ Tbbp
         # x, y, theta = get_state_from_tf(Tsb)
         # state = next_state(state=state, T=Tbbp)
+        u_noice = np.random.multivariate_normal(
+            mean=u,
+            cov=np.eye(2) * noice,
+            size=num_samples,
+        )
+        # print(u_noice)
+        for j in range(num_samples):
+            new_part = new_state(state=particles[:, j, i - 1], u=u_noice[j, :].T, dt=dt)
+            particles[:, j, i] = new_part
+
         state = new_state(state=state, u=u, dt=dt)
         # state += np.random.normal(0, noice, 3)
         # traj[:, i + 1] = np.array([x, y, theta])
-        traj[:, i + 1] = state
+        traj[:, i] = state
         # print(state)
 
     print(traj)
@@ -226,14 +258,25 @@ def p2_main(
     ax.set_xlim(-1.0, 5.0)
     ax.set_ylim(-1.0, 3.0)
     (line,) = ax.plot(0, 0)
+    (line_part,) = ax.plot(
+        0,
+        0,
+        linestyle="",
+        marker="o",
+        markerfacecolor=(1, 0, 0, 0),
+        markeredgecolor="k",
+    )
+
     animate = FuncAnimation(
         fig=fig,
         func=update_plot,
-        fargs=(line, traj),
-        frames=np.arange(0, num_samples),
+        fargs=(line, line_part, traj, particles, noice),
+        frames=np.arange(0, num_steps),
         interval=dt * 1e3,
         blit=True,
     )
+
+    # print(particles)
 
     # plt.show()
     animate.save("part2.mp4", writer="ffmpeg")
