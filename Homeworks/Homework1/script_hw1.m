@@ -18,11 +18,11 @@ n = 0;
 for i = 1:N+1
     for j = 1:N+1
         x = [(j-1)/N; (i-1)/N];
-
+        
         f_val = f_x(x, s);
         % display(f_val);
         n = n + 1;
-
+        
         map(i, j) = f_val;
     end
 end
@@ -38,7 +38,7 @@ for i = 1:100
     x_val = rand();
     y_val = rand();
     f_val = f_x([x_val; y_val], s);
-
+    
     measure = rand();
     if (measure < f_val)
         positive(:, posInd) = [x_val; y_val];
@@ -80,7 +80,7 @@ for i = 1:N+1
     for j = 1:N+1
         x_val = (j-1)/N;
         y_val = (i-1)/N;
-
+        
         map_est(i, j) = l_source([x_val; y_val], positive, negative);
     end
 end
@@ -121,7 +121,7 @@ for i = 1:100
     % x_val = val;
     % y_val = val;
     f_val = f_x([x_val; y_val], s);
-
+    
     measure = rand();
     if (measure < f_val)
         positive(:, posInd) = [x_val; y_val];
@@ -137,7 +137,7 @@ for i = 1:N+1
     for j = 1:N+1
         x_val = (j-1)/N;
         y_val = (i-1)/N;
-
+        
         map_est(i, j) = l_source([x_val; y_val], positive, negative);
     end
 end
@@ -181,15 +181,15 @@ map_b = ones(N+1, N+1);
 
 for i = 1:10
     measure = f_val > rand();
-
+    
     map_b = update_map(map_b, x, measure);
-
+    
     subplot(2, 5, i);
     hold on
     imagesc(xlim, ylim, map_b)
     colormap gray
     colorbar
-
+    
     if measure
         pos(:, posInd) = x;
         posInd = posInd + 1;
@@ -197,18 +197,18 @@ for i = 1:10
         neg(:, negInd) = x;
         negInd = negInd + 1;
     end
-
+    
     if size(pos, 2) > 0
         plot(pos(1, :), pos(2, :), LineStyle='none', Marker='.', Color='g', DisplayName='Positive Signal')
     end
-
+    
     if size(neg, 2) > 0
         plot(neg(1, :), neg(2, :), LineStyle='none', Marker='.', Color='r', DisplayName='Negative Signal')
     end
-
+    
     hold off
     legend show
-
+    
     set(gca, 'XLim', [0 1])
     set(gca, 'YLim', [0 1])
 end
@@ -229,17 +229,17 @@ map_c = ones(N+1, N+1);
 for i = 1:10
     x = [rand(); rand()];
     f_val = f_x(x, s);
-
+    
     measure = f_val > rand();
-
+    
     map_c = update_map(map_c, x, measure);
-
+    
     subplot(2, 5, i);
     hold on
     imagesc(xlim, ylim, map_c)
     colormap gray
     colorbar
-
+    
     if measure
         pos(:, posInd) = x;
         posInd = posInd + 1;
@@ -247,18 +247,18 @@ for i = 1:10
         neg(:, negInd) = x;
         negInd = negInd + 1;
     end
-
+    
     if size(pos, 2) > 0
         plot(pos(1, :), pos(2, :), LineStyle='none', Marker='.', Color='g', DisplayName='Positive Signal')
     end
-
+    
     if size(neg, 2) > 0
         plot(neg(1, :), neg(2, :), LineStyle='none', Marker='.', Color='r', DisplayName='Negative Signal')
     end
-
+    
     hold off
     legend show
-
+    
     set(gca, 'XLim', [0 1])
     set(gca, 'YLim', [0 1])
 end
@@ -268,55 +268,55 @@ saveas(gcf, 'part5.png')
 
 %% Helper Functions
 function fx = f_x(x, s)
-    fx = exp(-100*(norm(x-s)-0.2)^2);
+fx = exp(-100*(norm(x-s)-0.2)^2);
 end
 
 function p_x = p_zxs(x, s, z)
-    if z
-        p_x = exp(-100*(norm(x-s)-0.2)^2);
-    else
-        p_x = 1-exp(-100*(norm(x-s)-0.2)^2);
-    end
+if z
+    p_x = exp(-100*(norm(x-s)-0.2)^2);
+else
+    p_x = 1-exp(-100*(norm(x-s)-0.2)^2);
+end
 end
 
 function l_s = l_source(s, pos, neg)
-    l_s = 1;
-    n_pos = size(pos, 2);
-    n_neg = size(neg, 2);
+l_s = 1;
+n_pos = size(pos, 2);
+n_neg = size(neg, 2);
 
-    for i = 1:n_pos
-        x = pos(:, i);
-        l_s = l_s*p_zxs(x, s, true);
-    end
+for i = 1:n_pos
+    x = pos(:, i);
+    l_s = l_s*p_zxs(x, s, true);
+end
 
-    for i = 1:n_neg
-        x = neg(:, i);
-        l_s = l_s*p_zxs(x, s, false);
-    end
+for i = 1:n_neg
+    x = neg(:, i);
+    l_s = l_s*p_zxs(x, s, false);
+end
 
 end
 
 function map = update_map(map, x, z)
-    row = size(map, 1);
-    col = size(map, 2);
-    
-    px = 0;
-    dx = 1/(row*col);
-    for i = 1:row
-        for j = 1:col
-            s = [(j-1)/(col-1); (i-1)/(row-1)];
-            pzx = p_zxs(x, s, z);
-            bx = map(i, j);
-            px = px + pzx*bx*dx;
-        end
-    end
+row = size(map, 1);
+col = size(map, 2);
 
-    for i = 1 : row
-        for j = 1 : col
-            s = [(j-1)/(col-1); (i-1)/(row-1)];
-            pzx = p_zxs(x, s, z);
-            bx = map(i, j);
-            map(i, j) = pzx*bx/px;
-        end
+px = 0;
+dx = 1/(row*col);
+for i = 1:row
+    for j = 1:col
+        s = [(j-1)/(col-1); (i-1)/(row-1)];
+        pzx = p_zxs(x, s, z);
+        bx = map(i, j);
+        px = px + pzx*bx*dx;
     end
+end
+
+for i = 1 : row
+    for j = 1 : col
+        s = [(j-1)/(col-1); (i-1)/(row-1)];
+        pzx = p_zxs(x, s, z);
+        bx = map(i, j);
+        map(i, j) = pzx*bx/px;
+    end
+end
 end
