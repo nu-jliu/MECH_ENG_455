@@ -1,3 +1,5 @@
+import os
+
 import matplotlib.lines
 import numpy as np
 import cupy as cp
@@ -14,6 +16,7 @@ from typing import Literal
 from PIL import Image
 from io import BytesIO
 
+FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 IMAGE_URL = (
     "https://raw.githubusercontent.com/MurpheyLab/ME455_public/main/figs/lincoln.jpg"
@@ -103,7 +106,7 @@ def p1_main(
     axs[1].set_aspect("equal")
     axs[1].set_title("Samples")
 
-    plt.savefig(f"part1_{dist}.png", format="png", dpi=300)
+    plt.savefig(f"{FILE_DIR}/part1_{dist}.png", format="png", dpi=300)
     print("Done sampling, plot saved")
 
 
@@ -252,7 +255,7 @@ def p2_main(
     plt.plot(traj[0, :], traj[1, :])
     plt.xlim(left=-1.0, right=5.0)
     plt.ylim(bottom=-1.0, top=3.0)
-    plt.savefig("part2.png", format="png", dpi=300)
+    plt.savefig(f"{FILE_DIR}/part2.png", format="png", dpi=300)
 
     fig, ax = plt.subplots()
     ax.set_xlim(-1.0, 5.0)
@@ -279,7 +282,7 @@ def p2_main(
     # print(particles)
 
     # plt.show()
-    animate.save("part2.mp4", writer="ffmpeg")
+    animate.save(f"{FILE_DIR}/part2.mp4", writer="ffmpeg")
     print("Simulation saved")
 
 
