@@ -14,3 +14,5 @@ geometry: margin=2cm
 
 ## Problem 2
 ![](part2.png)
+
+## Problem 3
