@@ -11,3 +11,6 @@ geometry: margin=2cm
 
 ### Normal Distribution
 ![](part1_normal.png)
+
+## Problem 2
+![](part2.png)

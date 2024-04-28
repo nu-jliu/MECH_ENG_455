@@ -1,22 +1,21 @@
 import os
+import sys
+import requests
+import copy
 
-import matplotlib.lines
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+
 import numpy as np
 import cupy as cp
 import modern_robotics as mr
-
-import requests
-import copy
-import math
-import matplotlib
-import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
+import scipy.stats
 
 from typing import Literal
 from PIL import Image
 from io import BytesIO
 
-FILE_DIR = os.path.dirname(os.path.abspath(__file__))
+RESULTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Results")
 
 IMAGE_URL = (
     "https://raw.githubusercontent.com/MurpheyLab/ME455_public/main/figs/lincoln.jpg"
@@ -106,20 +105,12 @@ def p1_main(
     axs[1].set_aspect("equal")
     axs[1].set_title("Samples")
 
-    plt.savefig(f"{FILE_DIR}/part1_{dist}.png", format="png", dpi=300)
+    plt.savefig(f"{RESULTS_DIR}/part1_{dist}.png", format="png", dpi=300)
     print("Done sampling, plot saved")
 
 
-def next_state(state: tuple[float, float, float], T):
-    x = state[0]
-    y = state[1]
-    theta = state[2]
-
-    Vs = np.array([0, 0, theta, x, y, 0])
-    Tsb = mr.MatrixExp6(mr.VecTose3(Vs))
-    Tsbp = Tsb @ T
-
-    return get_state_from_tf(Tsbp)
+def normalize(angle):
+    return np.arctan2(np.sin(angle), np.cos(angle))
 
 
 def func_qdot(state, u):
@@ -133,63 +124,68 @@ def func_qdot(state, u):
     thetadot = u2
 
     qdot = np.array([xdot, ydot, thetadot])
+    # qdot = np.random.multivariate_normal(qdot, np.eye(3) * noice)
     return qdot
 
 
-def new_state(state, u, dt):
-    xt = copy.deepcopy(state)
-    k1 = dt * func_qdot(xt, u)
-    k2 = dt * func_qdot(xt + k1 / 2, u)
-    k3 = dt * func_qdot(xt + k2 / 2, u)
-    k4 = dt * func_qdot(xt + k3, u)
+def new_state(state, u, dt, noice=0, control_noice=0):
+    u_noice = np.random.multivariate_normal(mean=u, cov=np.eye(2) * control_noice)
 
-    state_new = xt + 1.0 / 6.0 * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
+    st = copy.deepcopy(state)
+    s1 = dt * func_qdot(st, u_noice)
+    s2 = dt * func_qdot(st + s1 / 2, u_noice)
+    s3 = dt * func_qdot(st + s2 / 2, u_noice)
+    s4 = dt * func_qdot(st + s3, u_noice)
+
+    state_new = st + 1.0 / 6.0 * (s1 + 2.0 * s2 + 2.0 * s3 + s4)
+    state_new[:3] = np.random.multivariate_normal(
+        mean=state_new[:3], cov=np.eye(3) * noice
+    )
+    state_new[2] = normalize(state_new[2])
     return state_new
 
 
-def get_state_from_tf(T):
-    # v6_se3 = mr.MatrixLog6(T)
-    # v6 = mr.se3ToVec(v6_se3)
-    # x = v6[3]
-    # y = v6[4]
-    # theta = v6[2]
+def get_measurement(sample, noice=0):
+    mean = sample[:3]
+    cov = np.eye(3) * noice
+    return np.random.multivariate_normal(mean=mean, cov=cov)
 
-    R, p = mr.TransToRp(T)
-    omg = mr.so3ToVec(mr.MatrixLog3(R))
-    # theta = omg[2]
-    # print(omg)
-    tr = np.trace(R)
-    theta = np.arccos((tr - 1) / 2)
-    # theta = math.atan2(R[1][0], R[0][0])
-    x = p[0]
-    y = p[1]
-    # print(v6)
 
-    return np.array([x, y, theta])
+def prob_density(z_vec, sample, noice):
+    dist = scipy.stats.multivariate_normal(mean=sample[:3], cov=np.eye(3) * noice)
+    density = dist.pdf(x=z_vec)
+
+    return density
 
 
 def update_plot(
     frame,
-    line: matplotlib.lines.Line2D,
-    line_part: matplotlib.lines.Line2D,
+    ax,
     traj,
     particles,
     noice,
+    colors,
 ):
-    line.set_xdata(traj[0, : (frame + 1)])
-    line.set_ydata(traj[1, : (frame + 1)])
+    ax.cla()
+    ax.set_xlim(-1.0, 5.0)
+    ax.set_ylim(-1.0, 3.0)
 
-    # x, y, theta = traj[:, frame]
+    (line,) = ax.plot(
+        traj[0, : (frame + 1)],
+        traj[1, : (frame + 1)],
+        linewidth=7,
+        color="k",
+    )
 
-    # samples = np.random.multivariate_normal(
-    #     mean=np.array([x, y, theta]),
-    #     cov=np.eye(3) * noice,
-    #     size=100,
-    # )
+    for i in range(frame + 1):
+        ax.scatter(
+            particles[0, :, i].flatten(),
+            particles[1, :, i].flatten(),
+            color=colors[i],
+            edgecolors="k",
+            s=20,
+        )
 
-    line_part.set_xdata(particles[0, :, : (frame + 1)].flatten())
-    line_part.set_ydata(particles[1, :, : (frame + 1)].flatten())
-    # print(particles[0, :, :1])
     return (line,)
 
 
@@ -199,101 +195,161 @@ def p2_main(
     T: float = 2.0 * np.pi,
     dt: float = 0.1,
     noice: float = 0.02,
+    num_particles: int = 10,
 ):
-    # t_list = np.linspace(start=0.0, stop=T, num=num_samples)
+
     t_list = np.arange(start=0.0, stop=T, step=dt)
     num_steps = len(t_list)
-    num_samples = 100
-    # dt = t_list[1]
-    # start_V6 = np.array([0, 0, start[2], start[0], start[1], 0])
-    # Tsb = mr.MatrixExp6(mr.VecTose3(start_V6))
 
     traj = np.zeros(shape=(3, num_steps))
-    particles = np.zeros(shape=(3, num_samples, num_steps))
-    particles[2, :, 0] = np.ones(shape=num_samples) * np.pi / 2
-    # x, y, theta = get_state_from_tf(Tsb)
+    particles = np.zeros(shape=(4, num_particles, num_steps))
+
+    Sigma_mat = np.eye(3) * noice
+    part_curr = np.random.multivariate_normal(
+        mean=start, cov=Sigma_mat, size=num_particles
+    )
+    part_curr = np.c_[part_curr, np.ones(shape=(num_particles, 1)) * 1 / num_particles]
+
     state = copy.deepcopy(start)
     traj[:, 0] = state
+    particles[:, :, 0] = part_curr.T
+    sum_cum = 0
 
-    print(
-        next_state(
-            state,
-            mr.MatrixExp6(mr.VecTose3(np.array([0, 0, -np.pi, 2 * np.pi, 0, 0]))),
-        )
-    )
-
-    u1 = u[0]
-    u2 = u[1]
-
-    v3 = np.array([u2, u1, 0]) * dt
-    v6 = np.r_[0, 0, v3, 0]
-    Tbbp = mr.MatrixExp6(mr.VecTose3(v6))
+    indices = np.arange(0, num_particles)
 
     print("Start simulating ...")
     for i in range(1, num_steps):
-        # Tsb = Tsb @ Tbbp
-        # x, y, theta = get_state_from_tf(Tsb)
-        # state = next_state(state=state, T=Tbbp)
-        u_noice = np.random.multivariate_normal(
-            mean=u,
-            cov=np.eye(2) * noice,
-            size=num_samples,
-        )
-        # print(u_noice)
-        for j in range(num_samples):
-            new_part = new_state(state=particles[:, j, i - 1], u=u_noice[j, :].T, dt=dt)
-            particles[:, j, i] = new_part
 
-        state = new_state(state=state, u=u, dt=dt)
-        # state += np.random.normal(0, noice, 3)
-        # traj[:, i + 1] = np.array([x, y, theta])
+        # state = new_state(state=state, u=u, dt=dt, noice=0)
+        state = new_state(state=state, u=u, dt=dt, noice=noice**2)
+        # state = new_state(state=state, u=u, dt=dt, control_noice=noice)
+        z_vec = get_measurement(sample=state, noice=noice)
+
+        for j in range(num_particles):
+            s = part_curr[j, :]
+            z_hat = get_measurement(sample=s)
+            w = prob_density(
+                z_vec=z_vec,
+                sample=s,
+                noice=noice,
+            )
+
+            s_new = new_state(state=s[:3].T, u=u, dt=dt, noice=noice)
+            part_curr[j, :3] = s_new
+            part_curr[j, 3] *= w
+
+        sum_weight = np.sum(part_curr[:, 3])
+        part_curr[:, 3] /= sum_weight
+
+        part_new = np.zeros_like(part_curr)
+        ind_new = np.random.choice(a=indices, size=num_particles, p=part_curr[:, 3])
+
+        # print(ind_new)
+        for j in range(num_particles):
+            ind = ind_new[j]
+            part_new[j, :] = part_curr[ind, :]
+
+        part_curr = part_new
+
+        sum_cum += sum_weight
+
+        particles[:, :, i] = part_curr.T
         traj[:, i] = state
-        # print(state)
 
-    print(traj)
+    print("Plotting results ...")
 
-    plt.plot(traj[0, :], traj[1, :])
+    cmap_rainbow = plt.get_cmap("rainbow")
+    frames = np.arange(0, num_steps)
+    colors = cmap_rainbow(np.linspace(0, 1, num_steps))
+    colors = [tuple(row) for row in colors]
+    plot_steps = np.arange(start=0, stop=num_steps, step=10)
+
+    plt.plot(traj[0, :], traj[1, :], linewidth=5, color="k")
     plt.xlim(left=-1.0, right=5.0)
     plt.ylim(bottom=-1.0, top=3.0)
-    plt.savefig(f"{FILE_DIR}/part2.png", format="png", dpi=300)
+
+    # for i in plot_steps:
+    for i in range(num_steps):
+        plt.scatter(
+            particles[0, :, i].flatten(),
+            particles[1, :, i].flatten(),
+            color=colors[i],
+            edgecolors="k",
+            s=20,
+        )
+    plt.savefig(f"{RESULTS_DIR}/part2.png", format="png", dpi=300)
 
     fig, ax = plt.subplots()
     ax.set_xlim(-1.0, 5.0)
     ax.set_ylim(-1.0, 3.0)
-    (line,) = ax.plot(0, 0)
-    (line_part,) = ax.plot(
-        0,
-        0,
-        linestyle="",
-        marker="o",
-        markerfacecolor=(1, 0, 0, 0),
-        markeredgecolor="k",
-    )
 
     animate = FuncAnimation(
         fig=fig,
         func=update_plot,
-        fargs=(line, line_part, traj, particles, noice),
-        frames=np.arange(0, num_steps),
+        fargs=(ax, traj, particles, noice, colors),
+        # fargs=(line, scatter, traj, particles, noice, colors),
+        frames=frames,
         interval=dt * 1e3,
         blit=True,
     )
 
-    # print(particles)
-
-    # plt.show()
-    animate.save(f"{FILE_DIR}/part2.mp4", writer="ffmpeg")
+    animate.save(f"{RESULTS_DIR}/part2.mp4", writer="ffmpeg")
     print("Simulation saved")
 
 
-if __name__ == "__main__":
-    # p1_main(dist="uniform", num_samples=5000)
-    # p1_main(dist="normal", num_samples=5000)
+def p3_main(w1, w2, w3, mean1, mean2, mean3, cov1, cov2, cov3, num_sample):
+    samples = np.zeros(shape=(num_sample, 2))
 
-    p2_main(
-        start=(0, 0, np.pi / 2),
-        u=(1, -1 / 2),
-        T=2 * np.pi,
-        dt=0.01,
-        noice=0.02,
-    )
+    weights = np.array([w1, w2, w3])
+    means = np.array([mean1, mean2, mean3])
+    covs = np.array([cov1, cov2, cov3])
+    print(covs.shape)
+
+    indeces = np.arange(3)
+
+    for i in range(num_sample):
+        index = np.random.choice(a=indeces, p=weights, size=1)
+
+        mean = means[index, :][0]
+        cov = covs[index, :, :][0]
+
+        s = np.random.multivariate_normal(mean=mean, cov=cov)
+        samples[i, :] = s
+
+    plt.scatter(samples[:, 0], samples[:, 1])
+    plt.show()
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python homework3.py <Problem Number>")
+
+    num_q = int(sys.argv[1])
+    if num_q == 1:
+        p1_main(dist="uniform", num_samples=5000)
+        p1_main(dist="normal", num_samples=5000)
+
+    elif num_q == 2:
+        p2_main(
+            start=(0, 0, np.pi / 2),
+            u=(1, -1 / 2),
+            T=2 * np.pi,
+            dt=0.1,
+            noice=0.02,
+            num_particles=100,
+        )
+
+    elif num_q == 3:
+        w1 = 0.5
+        w2 = 0.2
+        w3 = 0.3
+
+        mean1 = np.array([0.35, 0.38])
+        mean2 = np.array([0.68, 0.25])
+        mean3 = np.array([0.56, 0.64])
+
+        cov1 = np.array([[1e-2, 4e-3], [4e-3, 1e-2]])
+        cov2 = np.array([[5e-3, -3e-3], [-3e-3, 5e-3]])
+        cov3 = np.array([[8e-3, 0], [0, 8e-3]])
+
+        p3_main(w1, w2, w3, mean1, mean2, mean3, cov1, cov2, cov3, num_sample=100)
