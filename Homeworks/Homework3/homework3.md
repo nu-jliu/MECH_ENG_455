@@ -7,12 +7,13 @@ geometry: margin=2cm
 ## Problem 1
 
 ### Uniform Distribution
-![](part1_uniform.png)
+![](Results/part1_uniform.png)
 
 ### Normal Distribution
-![](part1_normal.png)
+![](Results/part1_normal.png)
 
 ## Problem 2
-![](part2.png)
+![](Results/part2.png)
 
 ## Problem 3
+![](Results/part3.png)

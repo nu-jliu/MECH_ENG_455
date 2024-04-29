@@ -8,7 +8,6 @@ from matplotlib.animation import FuncAnimation
 
 import numpy as np
 import cupy as cp
-import modern_robotics as mr
 import scipy.stats
 
 from typing import Literal
@@ -20,6 +19,8 @@ RESULTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Results"
 IMAGE_URL = (
     "https://raw.githubusercontent.com/MurpheyLab/ME455_public/main/figs/lincoln.jpg"
 )
+
+#################### PROBLEM 1 ####################
 
 
 def image_density(s, x_grid, y_grid, density_array):
@@ -109,6 +110,9 @@ def p1_main(
     print("Done sampling, plot saved")
 
 
+#################### PROBLEM 2 ####################
+
+
 def normalize(angle):
     return np.arctan2(np.sin(angle), np.cos(angle))
 
@@ -162,8 +166,8 @@ def update_plot(
     frame,
     ax,
     traj,
+    traj_est,
     particles,
-    noice,
     colors,
 ):
     ax.cla()
@@ -173,8 +177,15 @@ def update_plot(
     (line,) = ax.plot(
         traj[0, : (frame + 1)],
         traj[1, : (frame + 1)],
-        linewidth=7,
+        linewidth=1,
         color="k",
+    )
+
+    ax.plot(
+        traj_est[0, : (frame + 1)],
+        traj_est[1, : (frame + 1)],
+        linewidth=1,
+        color="r",
     )
 
     for i in range(frame + 1):
@@ -182,7 +193,8 @@ def update_plot(
             particles[0, :, i].flatten(),
             particles[1, :, i].flatten(),
             color=colors[i],
-            edgecolors="k",
+            alpha=particles[3, :, i].flatten() / np.max(particles[3, :, i]),
+            # edgecolors="k",
             s=20,
         )
 
@@ -194,7 +206,8 @@ def p2_main(
     u: tuple[float, float] = (1.0, -1.0 / 2.0),
     T: float = 2.0 * np.pi,
     dt: float = 0.1,
-    noice: float = 0.02,
+    noice_process: float = 0.002,
+    noice_measure: float = 0.02,
     num_particles: int = 10,
 ):
 
@@ -202,9 +215,11 @@ def p2_main(
     num_steps = len(t_list)
 
     traj = np.zeros(shape=(3, num_steps))
+    traj_est = np.zeros(shape=(3, num_steps))
+
     particles = np.zeros(shape=(4, num_particles, num_steps))
 
-    Sigma_mat = np.eye(3) * noice
+    Sigma_mat = np.eye(3) * noice_measure
     part_curr = np.random.multivariate_normal(
         mean=start, cov=Sigma_mat, size=num_particles
     )
@@ -212,6 +227,7 @@ def p2_main(
 
     state = copy.deepcopy(start)
     traj[:, 0] = state
+    traj_est[:, 0] = state
     particles[:, :, 0] = part_curr.T
     sum_cum = 0
 
@@ -221,20 +237,20 @@ def p2_main(
     for i in range(1, num_steps):
 
         # state = new_state(state=state, u=u, dt=dt, noice=0)
-        state = new_state(state=state, u=u, dt=dt, noice=noice**2)
+        state = new_state(state=state, u=u, dt=dt, noice=noice_process)
         # state = new_state(state=state, u=u, dt=dt, control_noice=noice)
-        z_vec = get_measurement(sample=state, noice=noice)
+        z_vec = get_measurement(sample=state, noice=noice_measure)
 
         for j in range(num_particles):
             s = part_curr[j, :]
-            z_hat = get_measurement(sample=s)
+            # z_hat = get_measurement(sample=s)
             w = prob_density(
                 z_vec=z_vec,
                 sample=s,
-                noice=noice,
+                noice=noice_measure,
             )
 
-            s_new = new_state(state=s[:3].T, u=u, dt=dt, noice=noice)
+            s_new = new_state(state=s[:3].T, u=u, dt=dt, noice=noice_process)
             part_curr[j, :3] = s_new
             part_curr[j, 3] *= w
 
@@ -249,11 +265,13 @@ def p2_main(
             ind = ind_new[j]
             part_new[j, :] = part_curr[ind, :]
 
+        state_est = np.mean(part_new[:, :3], axis=0)
         part_curr = part_new
 
         sum_cum += sum_weight
 
         particles[:, :, i] = part_curr.T
+        traj_est[:, i] = state_est
         traj[:, i] = state
 
     print("Plotting results ...")
@@ -262,21 +280,43 @@ def p2_main(
     frames = np.arange(0, num_steps)
     colors = cmap_rainbow(np.linspace(0, 1, num_steps))
     colors = [tuple(row) for row in colors]
-    plot_steps = np.arange(start=0, stop=num_steps, step=10)
+    plot_steps = np.round(
+        np.arange(start=num_steps - (6 / dt) - 1, stop=num_steps, step=1 / dt)
+    )
+    # plot_steps = np.arange(start=10, stop=num_steps, step=10)
+    # plt.xlim(left=-1.0, right=5.0)
+    # plt.ylim(bottom=-1.0, top=3.0)
 
-    plt.plot(traj[0, :], traj[1, :], linewidth=5, color="k")
-    plt.xlim(left=-1.0, right=5.0)
-    plt.ylim(bottom=-1.0, top=3.0)
+    print(plot_steps)
 
-    # for i in plot_steps:
-    for i in range(num_steps):
+    plt.plot(
+        traj[0, :],
+        traj[1, :],
+        linewidth=1,
+        color="k",
+        label="Ground Truth",
+    )
+    plt.plot(
+        traj_est[0, :],
+        traj_est[1, :],
+        linewidth=1,
+        color="r",
+        label="Estimated Trajectory",
+    )
+
+    for i in plot_steps:
+        # for i in range(num_steps):
+        ind = int(i)
         plt.scatter(
-            particles[0, :, i].flatten(),
-            particles[1, :, i].flatten(),
-            color=colors[i],
-            edgecolors="k",
+            particles[0, :, ind].flatten(),
+            particles[1, :, ind].flatten(),
+            color=colors[ind],
+            # edgecolors="k",
+            alpha=particles[3, :, ind].flatten() / np.max(particles[3, :, ind]),
             s=20,
         )
+
+    plt.legend()
     plt.savefig(f"{RESULTS_DIR}/part2.png", format="png", dpi=300)
 
     fig, ax = plt.subplots()
@@ -286,7 +326,7 @@ def p2_main(
     animate = FuncAnimation(
         fig=fig,
         func=update_plot,
-        fargs=(ax, traj, particles, noice, colors),
+        fargs=(ax, traj, traj_est, particles, colors),
         # fargs=(line, scatter, traj, particles, noice, colors),
         frames=frames,
         interval=dt * 1e3,
@@ -297,27 +337,120 @@ def p2_main(
     print("Simulation saved")
 
 
-def p3_main(w1, w2, w3, mean1, mean2, mean3, cov1, cov2, cov3, num_sample):
-    samples = np.zeros(shape=(num_sample, 2))
+#################### PROBLEM 3 ####################
 
-    weights = np.array([w1, w2, w3])
-    means = np.array([mean1, mean2, mean3])
-    covs = np.array([cov1, cov2, cov3])
-    print(covs.shape)
 
-    indeces = np.arange(3)
+def generate_samples(weights, means, covs, num_samples):
+    samples = np.zeros(shape=(num_samples, 3))
 
-    for i in range(num_sample):
-        index = np.random.choice(a=indeces, p=weights, size=1)
+    indeces = np.arange(0, len(weights))
 
-        mean = means[index, :][0]
-        cov = covs[index, :, :][0]
+    for i in range(num_samples):
+        index = np.random.choice(a=indeces, p=weights, size=1)[0]
+
+        mean = means[index, :]
+        cov = covs[index, :, :]
 
         s = np.random.multivariate_normal(mean=mean, cov=cov)
-        samples[i, :] = s
+        samples[i, :2] = s
+        samples[i, 2] = index
 
-    plt.scatter(samples[:, 0], samples[:, 1])
-    plt.show()
+    return samples
+
+
+def generate_pdf(weights, means, covs):
+    grid_range = np.arange(0, 1, 0.01)
+    x_grid, y_grid = np.meshgrid(grid_range, grid_range)
+    pos = np.stack((x_grid, y_grid), axis=2)
+    # print(pos.shape)
+
+    plt.xlim(0, 1)
+    plt.ylim(0, 1)
+
+    len_grid = len(grid_range)
+    pdf_gmm = np.zeros(shape=(len_grid, len_grid))
+
+    for i in range(3):
+
+        dist = scipy.stats.multivariate_normal(mean=means[i, :], cov=covs[i, :, :])
+        pdf_curr = dist.pdf(pos)
+        # print(np.max(pdf_curr))
+        pdf_curr /= np.sum(pdf_curr)
+
+        pdf_gmm += weights[i] * pdf_curr
+
+    # print(pos)
+
+    pdf_gmm /= np.sum(pdf_gmm)
+    return pdf_gmm
+
+
+def generate_boundary_points(mean, cov):
+    eigval, eigvec = np.linalg.eig(cov)
+    print(eigval)
+    print(eigvec)
+    thetalist = np.linspace(0, 2 * np.pi, 1000)
+    eclipse = 30 * np.array(
+        [
+            eigval[0] * np.cos(thetalist),
+            eigval[1] * np.sin(thetalist),
+        ]
+    )
+    #
+    # print(eclipse.T @ eigvec.T)
+    points = mean + eclipse.T @ eigvec.T
+    # print(points)
+    return points
+
+
+def p3_main(weights, means, covs, num_sample):
+
+    if not weights.shape[0] == means.shape[0] == covs.shape[0]:
+        raise RuntimeError("Invalid input configuration")
+
+    num_dist = len(weights)
+
+    fig, axs = plt.subplots(5, 3, figsize=(25, 30))
+
+    for row in axs:
+        for ax in row:
+            ax.set_xlim(0, 1)
+            ax.set_ylim(0, 1)
+            ax.set_aspect("equal")
+
+        samples = generate_samples(weights, means, covs, num_sample)
+
+        pdf_gmm = generate_pdf(weights, means, covs)
+        sample_dists = []
+
+        for j in range(num_dist):
+            mask = samples[:, 2] == j
+            sample_dists.append(samples[mask])
+
+        row[0].scatter(samples[:, 0], samples[:, 1])
+
+        cax = row[1].imshow(
+            pdf_gmm,
+            cmap="gray_r",
+            origin="lower",
+            extent=[0, 1, 0, 1],
+        )
+        fig.colorbar(cax, ax=row[1], orientation="vertical")
+
+        for j in range(num_dist):
+            row[1].scatter(sample_dists[j][:, 0], sample_dists[j][:, 1])
+
+            mean = means[j, :]
+            cov = covs[j, :]
+
+            points = generate_boundary_points(mean, cov)
+            # print(points.shape)
+            row[1].plot(points[:, 0], points[:, 1])
+
+    # axs[1].scatter(samples[mask_2][:, 0], samples[mask_2][:, 1])
+    # axs[1].scatter(samples[mask_3][:, 0], samples[mask_3][:, 1])
+    # plt.contourf(x_grid, y_grid, pdf_gmm, cmap="gray_r")
+    plt.savefig(f"{RESULTS_DIR}/part3.png", format="png", dpi=300)
 
 
 if __name__ == "__main__":
@@ -335,7 +468,8 @@ if __name__ == "__main__":
             u=(1, -1 / 2),
             T=2 * np.pi,
             dt=0.1,
-            noice=0.02,
+            noice_process=0.002,
+            noice_measure=0.02,
             num_particles=100,
         )
 
@@ -350,6 +484,10 @@ if __name__ == "__main__":
 
         cov1 = np.array([[1e-2, 4e-3], [4e-3, 1e-2]])
         cov2 = np.array([[5e-3, -3e-3], [-3e-3, 5e-3]])
-        cov3 = np.array([[8e-3, 0], [0, 8e-3]])
+        cov3 = np.array([[8e-3, 0], [0, 4e-3]])
 
-        p3_main(w1, w2, w3, mean1, mean2, mean3, cov1, cov2, cov3, num_sample=100)
+        weights = np.array([w1, w2, w3])
+        means = np.array([mean1, mean2, mean3])
+        covs = np.array([cov1, cov2, cov3])
+
+        p3_main(weights=weights, means=means, covs=covs, num_sample=100)
