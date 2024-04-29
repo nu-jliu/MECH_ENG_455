@@ -265,7 +265,12 @@ def p2_main(
             ind = ind_new[j]
             part_new[j, :] = part_curr[ind, :]
 
-        state_est = np.mean(part_new[:, :3], axis=0)
+        # print(part_new[:, :3])
+        # print(part_new[:, 3])
+        part_weighted = (
+            part_new[:, :3] * part_new[:, 3].reshape(-1, 1) / np.sum(part_new[:, 3])
+        )
+        state_est = np.sum(part_weighted, axis=0)
         part_curr = part_new
 
         sum_cum += sum_weight
@@ -382,15 +387,15 @@ def generate_pdf(weights, means, covs):
     # print(pos)
 
     pdf_gmm /= np.sum(pdf_gmm)
-    return pdf_gmm
+    return x_grid, y_grid, pdf_gmm
 
 
 def generate_boundary_points(mean, cov):
     eigval, eigvec = np.linalg.eig(cov)
-    print(eigval)
-    print(eigvec)
+    # print(eigval)
+    # print(eigvec)
     thetalist = np.linspace(0, 2 * np.pi, 1000)
-    eclipse = 30 * np.array(
+    eclipse = 25 * np.array(
         [
             eigval[0] * np.cos(thetalist),
             eigval[1] * np.sin(thetalist),
@@ -403,32 +408,50 @@ def generate_boundary_points(mean, cov):
     return points
 
 
+def get_mean_cov_from_sample(sample):
+    mean = np.mean(sample, axis=0)
+    cov = np.cov(sample.T)
+
+    return mean, cov
+
+
 def p3_main(weights, means, covs, num_sample):
 
     if not weights.shape[0] == means.shape[0] == covs.shape[0]:
         raise RuntimeError("Invalid input configuration")
 
     num_dist = len(weights)
+    dists = [
+        scipy.stats.multivariate_normal(mean=mu, cov=sigma)
+        for mu, sigma in zip(means, covs)
+    ]
 
     fig, axs = plt.subplots(5, 3, figsize=(25, 30))
 
-    for row in axs:
+    for i in range(len(axs)):
+        row = axs[i]
+
         for ax in row:
             ax.set_xlim(0, 1)
             ax.set_ylim(0, 1)
             ax.set_aspect("equal")
 
+        row[0].set_title("Unlabled Samples")
+        row[1].set_title("Ground Truth")
+        row[2].set_title(f"EM iter: {i+1}")
+
         samples = generate_samples(weights, means, covs, num_sample)
 
-        pdf_gmm = generate_pdf(weights, means, covs)
+        _, _, pdf_gmm = generate_pdf(weights, means, covs)
         sample_dists = []
 
         for j in range(num_dist):
             mask = samples[:, 2] == j
             sample_dists.append(samples[mask])
 
-        row[0].scatter(samples[:, 0], samples[:, 1])
+        row[0].scatter(samples[:, 0], samples[:, 1], alpha=0.6)
 
+        # cax = row[1].contourf(x_grid, y_grid, pdf_gmm, cmap="gray_r")
         cax = row[1].imshow(
             pdf_gmm,
             cmap="gray_r",
@@ -438,24 +461,76 @@ def p3_main(weights, means, covs, num_sample):
         fig.colorbar(cax, ax=row[1], orientation="vertical")
 
         for j in range(num_dist):
-            row[1].scatter(sample_dists[j][:, 0], sample_dists[j][:, 1])
+            row[1].scatter(sample_dists[j][:, 0], sample_dists[j][:, 1], alpha=0.6)
 
             mean = means[j, :]
-            cov = covs[j, :]
+            cov = covs[j, :, :]
+            # mean, cov = get_mean_cov_from_sample(sample=sample_dists[j][:, :2])
 
             points = generate_boundary_points(mean, cov)
             # print(points.shape)
             row[1].plot(points[:, 0], points[:, 1])
 
+        means_new = np.zeros_like(means)
+        covs_new = np.zeros_like(covs)
+        weights_new = np.zeros_like(weights)
+
+        for j in range(num_dist):
+            sample = sample_dists[j]
+            mu = means[j]
+            sigma = covs[j]
+            w = weights[j]
+
+            dist = scipy.stats.multivariate_normal(mean=mu, cov=sigma)
+
+            sample_size = sample.shape[0]
+            gamma_list = np.zeros(shape=sample_size)
+            for k in range(sample_size):
+                s = sample[k, :]
+                gamma = (
+                    w
+                    * dist.pdf(x=s[:2])
+                    / np.sum(
+                        [
+                            weight * dst.pdf(x=s[:2])
+                            for weight, dst in zip(weights, dists)
+                        ]
+                    )
+                )
+                gamma_list[k] = gamma
+
+            # print(gamma_list.reshape(-1, 1))
+            mu_new = np.sum(
+                gamma_list.reshape(-1, 1) * sample[:, :2],
+                axis=0,
+            ) / np.sum(gamma_list)
+
+            diff = s[:2] - mu_new
+            sigma_new = (
+                np.sum(gamma_list.reshape(-1, 1))
+                * np.outer(diff, diff)
+                / np.sum(gamma_list)
+            )
+            w_new = 1 / sample_size * np.sum(gamma_list)
+
+            means_new[j, :] = mu_new
+            covs_new[j, :, :] = sigma_new
+            weights_new[j] = w_new
+
+        # means = means_new
+        # covs = covs_new
+        # weights = weights_new
+        # weights /= np.sum(weights)
+
     # axs[1].scatter(samples[mask_2][:, 0], samples[mask_2][:, 1])
     # axs[1].scatter(samples[mask_3][:, 0], samples[mask_3][:, 1])
-    # plt.contourf(x_grid, y_grid, pdf_gmm, cmap="gray_r")
     plt.savefig(f"{RESULTS_DIR}/part3.png", format="png", dpi=300)
 
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python homework3.py <Problem Number>")
+        # print("Usage: python homework3.py <Problem Number>")
+        raise RuntimeError("Usage: python homework3.py <Problem Number>")
 
     num_q = int(sys.argv[1])
     if num_q == 1:
