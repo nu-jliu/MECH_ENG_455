@@ -2,7 +2,7 @@
 geometry: margin=2cm
 ---
 
-# ME455 Active Learning for Robotics
+# ME455 Active Learning for Robotics Homework 4
 **Author**: Jingkun (Allen) Liu
 
 ## Problem 1
@@ -110,3 +110,6 @@ $$
     v(t) &= B^{-1}(t) \left[\dot{z}(t) - A(t)z(t)\right]
 \end{aligned}
 $$
+
+## Problem 2
+![](Results/part2.png)
