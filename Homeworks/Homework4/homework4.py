@@ -10,6 +10,8 @@ from matplotlib.lines import Line2D
 
 RESULTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Results")
 
+############### Problem 2 ###############
+
 
 def opt_func(x1, x2):
     f = 0.26 * (x1**2 + x2**2) - 0.46 * x1 * x2
@@ -30,7 +32,7 @@ def update_plot(frame, line: Line2D, traj):
     return (line,)
 
 
-if __name__ == "__main__":
+def main_p2():
     n_iter = 100
     x_range = np.linspace(-5, 5, 1000)
     y_range = np.linspace(-5, 5, 1000)
@@ -47,6 +49,8 @@ if __name__ == "__main__":
     traj = np.zeros(shape=(n_iter + 1, 2))
     traj[0, :] = x
 
+    print("Simulating ...")
+
     for i in range(n_iter):
         gamma = gamma_0
         z = -gradient(*x)
@@ -59,9 +63,8 @@ if __name__ == "__main__":
         x += gamma * z
         traj[i + 1, :] = x
 
-    # print(traj)
+    print("Plotting results ...")
 
-    # print(z_grid)
     plt.imshow(
         z_grid,
         origin="lower",
@@ -75,16 +78,7 @@ if __name__ == "__main__":
     plt.scatter(*traj[-1, :], color="m", label="Converged estimation")
     plt.scatter(*x0, color="k", label="Initial guess")
     plt.legend()
-    # cbar.set_ticks(
-    #     [
-    #         10**i
-    #         for i in range(
-    #             int(np.floor(np.log10(np.min(z_grid)))),
-    #             int(np.ceil(np.log10(np.max(z_grid)))) + 1,
-    #         )
-    #     ]
-    # )
-    # plt.show()
+
     plt.savefig(fname=os.path.join(RESULTS_DIR, "part2.png"), format="png", dpi=300)
 
     fig, ax = plt.subplots()
@@ -108,3 +102,16 @@ if __name__ == "__main__":
     )
 
     animate.save(filename=os.path.join(RESULTS_DIR, "part2.mp4"), writer="ffmpeg")
+
+    print("Simulation result saved")
+
+
+############### Problem 3 ###############
+
+
+def main_p3():
+    pass
+
+
+if __name__ == "__main__":
+    main_p2()
