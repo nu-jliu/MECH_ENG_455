@@ -75,7 +75,7 @@ $$
     \end{bmatrix} \begin{bmatrix}
         z(t) \\ p(t)
     \end{bmatrix} + \begin{bmatrix}
-        -a_z(t) \\ B(t)v(t)
+        B(t)v(t) \\ -a_z(t)
     \end{bmatrix} \\
     &= \begin{bmatrix}
         M_{11} & M_{12} \\
@@ -95,21 +95,28 @@ $$
         A(t) & 0 \\
         0 & -A(t)^\top 
     \end{bmatrix} \\
-    m_1 &= -a_z(t) \\
-    m_2 &= B(t)v(t) \\
+    m_1 &= B(t)v(t) \\
     &= B(t) \left[-R_v^{-\top}p(t)^\top B(t) - R_v^{-\top}b_u(t)^\top\right] \\
-    &= -B(t)R_v^{-\top} \left[p(t)^\top B(t) + b_u(t)^\top\right]
+    &= -B(t)R_v^{-\top} \left[p(t)^\top B(t) + b_u(t)^\top\right] \\
+    m_2 &= -a_z(t) \\
+    &= -a_x(t) - z(t) ^\top Q_z 
 \end{aligned}
 $$
 
-After we solve the BVP to find $z(t)$ and $p(t)$ we can find $v(t)$ by
+After we solve the BVP to find $z(t)$ and $p(t)$ we can find $v(t)$ by using the expression for $v(t)$ derived above:
 $$
 \begin{aligned}
-    \dot{z}(t) &= \frac{d}{dt}z(t) \\
-    \dot{z}(t) &= A(t) z(t) + B(t) v(t) \\
-    v(t) &= B^{-1}(t) \left[\dot{z}(t) - A(t)z(t)\right]
+    v(t) &= -R_v^{-\top}p(t)^\top B(t) - R_v^{-\top}b_u(t)^\top \\
+    &= -R_v^{-\top} \left[ p(t)^\top B(t) + b_u(t)^\top \right]
 \end{aligned}
 $$
 
 ## Problem 2
 ![](Results/part2.png)
+
+## Problem 3
+![](Results/part3_1.png)
+
+![](Results/part3_2.png)
+
+![](Results/part3_3.png)
