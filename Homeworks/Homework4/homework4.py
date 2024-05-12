@@ -71,6 +71,8 @@ def main_p2(
         ):
             gamma *= beta
 
+        # print(gamma)
+
         x += gamma * z
         traj[i + 1, :] = x
 
