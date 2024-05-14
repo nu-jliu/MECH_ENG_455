@@ -68,7 +68,7 @@ def main_p3(
         return xt_new
 
     def traj_sim(x0, ulist):
-        tsteps = ulist.shape[0]
+        # tsteps = ulist.shape[0]
         x_traj = np.zeros((tsteps + 1, 3))
         x_traj[0, :] = x0
         xt = copy.deepcopy(x0)
