@@ -5,6 +5,12 @@ import matplotlib as mplt
 
 from question1 import *
 
+# import IPython
+
+# IPython.embed()
+
+# from q1new import *
+
 
 def init_param():
     mplt.rcParams["axes.linewidth"] = 3
@@ -21,7 +27,7 @@ def init_param():
     mplt.rcParams["legend.fontsize"] = 15
 
 
-if __name__ == "__main__":
+def main():
     # init_param()
 
     w1, w2, w3 = 0.5, 0.2, 0.3
@@ -37,6 +43,7 @@ if __name__ == "__main__":
     T = 10
     dt = 0.1
     tlist = np.arange(0, T, dt)
+    tsteps = tlist.shape[0]
 
     u_traj = np.zeros(shape=(100, 2))
     x_curr = np.array([0.3, 0.3])
@@ -58,17 +65,26 @@ if __name__ == "__main__":
         x_new = dyn_random(None, weights, dists)
         u_traj[i, :] = (x_new - x_curr) / dt
         x_curr = x_new
-    # u_traj = 0.25 * np.array([np.sin(tlist), np.cos(tlist)]).T
-    u_traj = np.tile(np.array([0.05, 0.05]), reps=(100, 1))
+    # u_traj = (
+    #     -0.07
+    #     * np.array(
+    #         [
+    #             np.sin(tlist * np.pi / T + np.pi / 4),
+    #             np.cos(tlist * np.pi / T - np.pi / 4),
+    #         ]
+    #     ).T
+    # )
+    # u_traj = 0.3 * np.array([np.sin(tlist), np.cos(tlist)]).T
+    u_traj = np.tile(np.array([0.05, 0.01]), reps=(tsteps, 1))
     # u_traj = np.vstack(
     #     (
     #         np.tile(np.array([0.08, -0.02]), reps=(50, 1)),
     #         np.tile(np.array([-0.02, 0.08]), reps=(50, 1)),
     #     )
     # )
-    # u_traj = np.random.uniform(low=-0.1, high=0.1, size=(100, 2))
+    # u_traj = np.random.uniform(low=-0.5, high=0.5, size=(100, 2))
     # u_traj = np.random.multivariate_normal(
-    #     mean=np.array([0, 0]), cov=np.eye(2) * 0.01, size=100
+    #     mean=np.array([0, 0]), cov=np.eye(2) * (0.5 / 3) ** 2, size=100
     # )
     # print(u_traj)
 
@@ -101,9 +117,21 @@ if __name__ == "__main__":
         cov2=cov2,
         cov3=cov3,
         init_u_traj=u_traj,
+        q=0.01,
+        R_u=np.diag([0.001, 0.001]),
+        P1=np.diag([2.0, 2.0]),
+        Q_z=np.diag([0.01, 0.001]),
+        R_v=np.diag([0.001, 0.001]),
         # u_traj=u_traj,
         N_grid=100,
         K_per_dim=10,
         dt=0.1,
-        T=10,
+        T=T,
+        max_iter=200,
+        gamma_0=0.001,
     )
+
+
+if __name__ == "__main__":
+    main()
+    # IPython.embed()

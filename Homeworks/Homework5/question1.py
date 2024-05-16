@@ -7,6 +7,14 @@ from scipy.integrate import solve_bvp
 
 import matplotlib.pyplot as plt
 
+phi_list = np.empty(0)
+fk_list = np.empty(0)
+h_list = np.empty(0)
+c_list = np.empty(0)
+f_traj = np.empty(0)
+lam_list = np.empty(0)
+dfkdxdt_list = np.empty(0)
+
 RESULTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Results")
 
 
@@ -27,18 +35,26 @@ def dyn_random(_, weights, dists):
     return dist.rvs()
 
 
-def sdot(_, ut):
+def xdot(_, ut):
     return ut
 
 
-def next_state(st, ut, dt):
-    k1 = dt * sdot(st, ut)
-    k2 = dt * sdot(st + k1 / 2.0, ut)
-    k3 = dt * sdot(st + k2 / 2.0, ut)
-    k4 = dt * sdot(st + k3, ut)
+def next_state(xt, ut, dt):
+    k1 = dt * xdot(xt, ut)
+    k2 = dt * xdot(xt + k1 / 2.0, ut)
+    k3 = dt * xdot(xt + k2 / 2.0, ut)
+    k4 = dt * xdot(xt + k3, ut)
 
-    st_new = st + 1.0 / 6.0 * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
-    return st_new
+    xt_new = xt + 1.0 / 6.0 * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
+    return xt_new
+
+
+# def barr(x_traj):
+#     x_traj_barr = np.zeros_like(x_traj)
+
+#     for xt in x_traj:
+#         x1, x2 = xt
+#         x1_barr = min(0, x-0)**2+max()
 
 
 def main_p1(
@@ -47,13 +63,14 @@ def main_p1(
     # init_u_traj=np.zeros(shape=(63, 2)),
     # x0=np.array([0.0, 0.0, np.pi / 2.0]),
     x0=np.array([0.3, 0.3]),
-    Q_x=np.diag([0.01, 0.01, 2.0]),
-    R_u=np.diag([5.0, 5.0]),
+    # Q_x=np.diag([0.01, 0.01, 2.0]),
+    q=0.01,
+    R_u=np.diag([0.0, 0.0]),
     # P1=np.diag([20.0, 20.0, 5.0]),
     P1=np.diag([2.0, 2.0]),
     # Q_z=np.diag([5.0, 5.0, 1.0]),
     Q_z=np.diag([0.001, 0.001]),
-    R_v=np.diag([0.2, 0.2]),
+    R_v=np.diag([0.01, 0.01]),
     w1=0.5,
     mu1=np.array([0.35, 0.38]),
     cov1=np.array([[0.01, 0.004], [0.004, 0.01]]),
@@ -66,6 +83,8 @@ def main_p1(
     init_u_traj=np.tile(np.array([-0.1, 0.1]), reps=100),
     N_grid=1000,
     K_per_dim=10,
+    gamma_0=0.001,
+    max_iter=100,
     fig_filename="example.png",
 ):
     tlist = np.arange(0, T, dt)
@@ -179,17 +198,17 @@ def main_p1(
             xt = copy.deepcopy(xt_new)
         return x_traj
 
-    def loss(t, xt, ut):
-        # xd = np.array([2.0 * t / np.pi, 0.0, np.pi / 2.0])  # desired system state at time t
-        xd = get_xd(t)
+    # def loss(t, xt, ut):
+    #     # xd = np.array([2.0 * t / np.pi, 0.0, np.pi / 2.0])  # desired system state at time t
+    #     xd = get_xd(t)
 
-        x_diff = xt - xd
-        # x_loss = 0.0  # replace this
-        x_loss = x_diff.T @ Q_x @ x_diff
-        # u_loss = 0.0  # replace this
-        u_loss = ut.T @ R_u @ ut
+    #     x_diff = xt - xd
+    #     # x_loss = 0.0  # replace this
+    #     x_loss = x_diff.T @ Q_x @ x_diff
+    #     # u_loss = 0.0  # replace this
+    #     u_loss = ut.T @ R_u @ ut
 
-        return x_loss + u_loss
+    #     return x_loss + u_loss
 
     def dldx(t, xt, ut):
         # xd = np.array([2.0 * t / np.pi, 0.0, np.pi / 2.0])
@@ -218,8 +237,9 @@ def main_p1(
                 )
             )
 
-            dvec += lam_k / (T**2) * (dfkdx * ck * T - 2 * T * dfkdx * phi_k)
-            dvec += lam_k / (T**2) * (fk_t * dfkdxdt)
+            # dvec += lam_k / (T**2) * (dfkdx * ck * T - 2 * T * dfkdx * phi_k)
+            # dvec += lam_k / (T**2) * (fk_t * dfkdxdt)
+            dvec += q * lam_k * (2 * (ck - phi_k) * 1 / T * dfkdx)
 
         # dx = xt - xd
         # dvec = 2 * qlist * dx
@@ -228,17 +248,18 @@ def main_p1(
     def dldu(t, xt, ut):
         dvec = np.zeros(2)  # replace this
         rlist = np.diag(R_u)
-        dvec = 2 * rlist * ut
+        dvec = rlist * ut
         return dvec
 
     def func_J(x_traj, u_traj):
         J_val = 0
 
-        J_val += np.sum(lam_list * np.square(c_list - phi_list))
+        # print(c_list)
+        J_val += q * np.sum(lam_list * np.square(c_list - phi_list))
         # print(u_traj.T @ R_u @ u_traj)
         for ut in u_traj:
             # print(ut)
-            J_val += ut.T @ R_u @ ut
+            J_val += ut.T @ R_u @ ut * dt
         # for xt, ut, t in zip(x_traj[:, :], u_traj, tlist):
         #     l_val = loss(t, xt, ut)
         #     J_val += l_val
@@ -266,6 +287,11 @@ def main_p1(
             fk_vals = np.prod(np.cos(k_vec * np.pi / L_list * x_traj), axis=1)
             dfkdxdt = np.zeros(2)
 
+            hk = h_list[i]
+            fk_vals /= hk
+
+            ck = np.sum(fk_vals) * dt / T
+
             for xt in x_traj:
                 dfkdx = (
                     -1
@@ -276,16 +302,14 @@ def main_p1(
                 )
                 dfkdxdt += dfkdx * dt
 
-            dfkdxdt_list[i, :] = dfkdxdt
-            f_traj[i, :] = fk_vals
             # print(fk_vals.shape)
             # fk_vals_gt = fk_list[i, :]
-            hk = h_list[i]
-            fk_vals /= hk
 
-            ck = np.sum(fk_vals) * dt / T
+            dfkdxdt_list[i, :] = copy.deepcopy(dfkdxdt)
+            f_traj[i, :] = fk_vals
             c_list[i] = ck
 
+        # print("in loop: ", c_list)
         # print(dfkdxdt_list)
 
         # compute other variables needed for specifying the dynamics of z(t) and p(t)
@@ -309,7 +333,7 @@ def main_p1(
 
         p1 = 2 * plist * (xT - mu2) * (xT_2 - mu3)
         # p1 = plist * xT
-        # p1 = np.zeros(2)
+        p1 = np.zeros(2)
 
         def zp_dyn(t, zp):
             zt = zp[:2]
@@ -401,14 +425,14 @@ def main_p1(
             vt = -np.linalg.inv(R_v.T) @ (pt.T @ Bt + bt.T)
             v_traj[_i, :] = vt
 
-        return v_traj
+        return v_traj, c_list
 
     # Start iLQR iterations here
 
     u_traj = init_u_traj.copy()
     Jlist = np.array([func_J(traj_sim(x0, u_traj), u_traj)])
 
-    for iter in range(100):
+    for iter in range(max_iter):
         print(f"Iteration {iter} ...")
         # forward simulate the current trajectory
         x_traj = traj_sim(x0, u_traj)
@@ -428,12 +452,15 @@ def main_p1(
         # plt.close()
 
         # get descent direction
-        v_traj = ilqr_iter(x0, u_traj)
+
+        # print("before: ", c_list)
+        v_traj, c_list = ilqr_iter(x0, u_traj)
+        # print("after: ", c_list)
         # print(v_traj)
 
         # Armijo line search parameters
-        gamma = 0.1  # initial step size
-        alpha = 1e-04
+        gamma = copy.deepcopy(gamma_0)  # initial step size
+        alpha = 1e-4
         beta = 0.5
 
         # print(-v_traj.T @ v_traj)
@@ -449,10 +476,11 @@ def main_p1(
         # update control for the next iteration
         u_traj += gamma * v_traj
         Jlist = np.hstack([Jlist, func_J(x_traj, u_traj)])
-        print(gamma)
+        print(f"Gamma = {gamma}, J = {Jlist[-1]}")
         if gamma < 1e-5:
             break
 
+    # print(Jlist)
     init_x_traj = traj_sim(x0, init_u_traj)
     # xd_traj = np.zeros(shape=(tsteps, x0.shape[0]))
 
