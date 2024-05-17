@@ -86,7 +86,7 @@ def main_p2(
     gamma_0=0.001,
     max_iter=100,
     fig_filename="example.png",
-    multiplyer=1,
+    multiplier=1,
 ):
     tlist = np.arange(0, T, dt)
     tsteps = tlist.shape[0]
@@ -444,7 +444,7 @@ def main_p2(
     u_traj = copy.deepcopy(init_u_traj)
     Jlist = np.array([func_J(traj_sim(x0, u_traj), u_traj)])
 
-    for iter in range(max_iter * multiplyer):
+    for iter in range(max_iter * multiplier):
         print(f"Iteration {iter} ...")
         # forward simulate the current trajectory
         x_traj = traj_sim(x0, u_traj)
@@ -487,12 +487,12 @@ def main_p2(
 
         # update control for the next iteration
         u_traj += gamma * v_traj
-        if iter % multiplyer == multiplyer - 1:
+        if iter % multiplier == multiplier - 1:
             Jlist = np.hstack([Jlist, func_J(x_traj, u_traj)])
             print(f"Gamma = {gamma}, J = {Jlist[-1]}")
 
-        if gamma < 1e-5:
-            break
+        # if gamma < 1e-5:
+        #     break
 
     # print(Jlist)
     init_x_traj = traj_sim(x0, init_u_traj)

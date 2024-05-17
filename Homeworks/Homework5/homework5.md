@@ -10,3 +10,6 @@ geometry: margin=2cm
 
 ## Problem 2
 ![](Results/problem2.png)
+
+## Problem 3
+![](Results/problem3.png)

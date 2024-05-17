@@ -477,8 +477,8 @@ def main_p1(
         u_traj += gamma * v_traj
         Jlist = np.hstack([Jlist, func_J(x_traj, u_traj)])
         print(f"Gamma = {gamma}, J = {Jlist[-1]}")
-        if gamma < 1e-5:
-            break
+        # if gamma < 1e-5:
+        #     break
 
     # print(Jlist)
     init_x_traj = traj_sim(x0, init_u_traj)

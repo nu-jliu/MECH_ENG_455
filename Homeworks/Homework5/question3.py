@@ -254,7 +254,7 @@ def main_p3(
 
         # dx = xt - xd
         # dvec = 2 * qlist * dx
-        return np.hstack([np.zeros(1), dvec])
+        return np.append(dvec, 0)
 
     def dldu(t, xt, ut):
         dvec = np.zeros(2)  # replace this
@@ -344,7 +344,7 @@ def main_p3(
 
         # p1 = 2 * plist * (xT - mu2) * (xT_2 - mu3)
         # p1 = plist * xT
-        p1 = np.zeros(4)
+        p1 = np.zeros(3)
 
         def zp_dyn(t, zp):
             zt = zp[:3]
@@ -405,7 +405,7 @@ def main_p3(
             zp_dyn_list,
             zp_bc,
             tlist,
-            np.zeros(shape=(8, tsteps)),
+            np.zeros(shape=(6, tsteps)),
             verbose=1,
             max_nodes=100,
         )
@@ -491,8 +491,8 @@ def main_p3(
             Jlist = np.hstack([Jlist, func_J(x_traj, u_traj)])
             print(f"Gamma = {gamma}, J = {Jlist[-1]}")
 
-        if gamma < 1e-5:
-            break
+        # if gamma < 1e-5:
+        #     break
 
     # print(Jlist)
     init_x_traj = traj_sim(x0, init_u_traj)

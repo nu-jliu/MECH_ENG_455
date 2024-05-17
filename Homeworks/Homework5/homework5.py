@@ -83,7 +83,11 @@ def main():
     #     ).T
     # )
     # u_traj = 0.3 * np.array([np.sin(tlist), np.cos(tlist)]).T
-    u_traj = np.tile(np.array([0.005, 0.0015]), reps=(tsteps, 1))
+    # if num_p == 1:
+    #     u_traj = np.tile(np.array([0.05, 0.001]), reps=(tsteps, 1))
+
+    # elif num_p == 2:
+    #     u_traj = np.tile(np.array([0.005, 0.0015]), reps=(tsteps, 1))
     # u_traj = np.vstack(
     #     (
     #         np.tile(np.array([0.08, -0.02]), reps=(50, 1)),
@@ -97,6 +101,8 @@ def main():
     # print(u_traj)
 
     if num_p == 1:
+        u_traj = np.tile(np.array([0.05, 0.02]), reps=(tsteps, 1))
+
         q1.main_p1(
             w1=w1,
             w2=w2,
@@ -125,6 +131,8 @@ def main():
         )
 
     elif num_p == 2:
+        u_traj = np.tile(np.array([0.005, 0.0015]), reps=(tsteps, 1))
+
         q2.main_p2(
             w1=w1,
             w2=w2,
@@ -150,10 +158,12 @@ def main():
             max_iter=100,
             gamma_0=0.001,
             fig_filename="problem2.png",
-            multiplyer=10,
+            multiplier=1,
         )
 
     elif num_p == 3:
+        u_traj = np.tile(np.array([0.02 * np.pi, -np.pi / 10.0]), reps=(tsteps, 1))
+
         q3.main_p3(
             w1=w1,
             w2=w2,
@@ -166,10 +176,10 @@ def main():
             cov3=cov3,
             init_u_traj=u_traj,
             q=0.1,
-            R_u=np.diag([0.01, 0.01]),
+            R_u=np.diag([0.01, 0.001]),
             P1=np.diag([2.0, 2.0]),
-            Q_z=np.diag([0.01, 0.01, 0.00, 0.00]),
-            R_v=np.diag([0.01, 0.01]),
+            Q_z=np.diag([0.01, 0.01, 0.001]),
+            R_v=np.diag([0.01, 0.005]),
             x0=np.array([0.3, 0.3, np.pi / 2.0]),
             # u_traj=u_traj,
             N_grid=100,
@@ -178,8 +188,8 @@ def main():
             T=T,
             max_iter=100,
             gamma_0=0.001,
-            fig_filename="problem2.png",
-            multiplyer=10,
+            fig_filename="problem3.png",
+            multiplyer=2,
         )
 
     else:
