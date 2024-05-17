@@ -5,20 +5,20 @@ geometry: margin=1cm
 **Author**: Allen Liu
 
 ## Problem 1
-![](part1.png)
+![](Results/part1.png)
 
 ## Problem 2
-![](part2.png)
+![](Results/part2.png)
 
 ## Problem 3
-![](part3_1.png)
+![](Results/part3_1.png)
 
-![](part3_2.png)
+![](Results/part3_2.png)
 
-![](part3_3.png)
+![](Results/part3_3.png)
 
 ## Problem 4
-![](part4.png)
+![](Results/part4.png)
 
 ## Problem 5
-![](part5.png)
+![](Results/part5.png)
