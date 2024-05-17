@@ -57,7 +57,7 @@ def next_state(xt, ut, dt):
 #         x1_barr = min(0, x-0)**2+max()
 
 
-def main_p1(
+def main_p3(
     dt=0.1,
     T=10,
     # init_u_traj=np.zeros(shape=(63, 2)),
@@ -69,8 +69,8 @@ def main_p1(
     # P1=np.diag([20.0, 20.0, 5.0]),
     P1=np.diag([2.0, 2.0]),
     # Q_z=np.diag([5.0, 5.0, 1.0]),
-    Q_z=np.diag([0.001, 0.001]),
-    R_v=np.diag([0.01, 0.01]),
+    Q_z=np.diag([0.001, 0.001, 0.001, 0.001]),
+    R_v=np.diag([0.01, 0.01, 0.01, 0.01]),
     w1=0.5,
     mu1=np.array([0.35, 0.38]),
     cov1=np.array([[0.01, 0.004], [0.004, 0.01]]),
@@ -86,6 +86,7 @@ def main_p1(
     gamma_0=0.001,
     max_iter=100,
     fig_filename="example.png",
+    multiplyer=1,
 ):
     tlist = np.arange(0, T, dt)
     tsteps = tlist.shape[0]
@@ -145,32 +146,42 @@ def main_p1(
 
     def dyn(xt, ut):
         # xdot = np.zeros(3)  # replace this
-        # theta = xt[2]
-        # u1 = ut[0]
-        # u2 = ut[1]
-        # x1dot = np.cos(theta) * u1
-        # x2dot = np.sin(theta) * u1
-        # x3dot = u2
+        theta = xt[2]
+        u1 = ut[0]
+        u2 = ut[1]
+        x1dot = np.cos(theta) * u1
+        x2dot = np.sin(theta) * u1
+        x3dot = u2
+        # x1dot = xt[2]
+        # x2dot = xt[3]
+        # x1ddot = ut[0]
+        # x2ddot = ut[1]
 
-        # xdot = np.array([x1dot, x2dot, x3dot])
-        xdot = copy.deepcopy(ut)
+        xdot = np.array([x1dot, x2dot, x3dot])
+        # xdot = copy.deepcopy(ut)
+        # xdot = np.array([x1dot, x2dot, x1ddot, x2ddot])
         return xdot
 
     def get_A(t, xt, ut):
-        # theta = xt[2]
-        # u1 = ut[0]
-        A_mat = np.zeros((2, 2))  # replace this
-        # A_mat[0, 2] = -np.sin(theta) * u1
-        # A_mat[1, 2] = np.cos(theta) * u1
+        theta = xt[2]
+        u1 = ut[0]
+        A_mat = np.zeros((3, 3))  # replace this
+        # A_mat = np.zeros((4, 4))
+        # A_mat[0, 2] = 1
+        # A_mat[1, 3] = 1
+        A_mat[0, 2] = -np.sin(theta) * u1
+        A_mat[1, 2] = np.cos(theta) * u1
         return A_mat
 
     def get_B(t, xt, ut):
-        # theta = xt[2]
-        # B_mat = np.zeros((2, 2))  # replace this
-        B_mat = np.eye(2)
-        # B_mat[0, 0] = np.cos(theta)
-        # B_mat[1, 0] = np.sin(theta)
-        # B_mat[2, 1] = 1
+        theta = xt[2]
+        B_mat = np.zeros((3, 2))  # replace this
+        # B_mat[2, 0] = 1
+        # B_mat[3, 1] = 1
+        # B_mat = np.eye(2)
+        B_mat[0, 0] = np.cos(theta)
+        B_mat[1, 0] = np.sin(theta)
+        B_mat[2, 1] = 1
         return B_mat
 
     def get_xd(t):
@@ -232,8 +243,8 @@ def main_p1(
                 * (
                     k_vec
                     * np.pi
-                    * np.sin(k_vec * np.pi * xt)
-                    * np.cos(k_vec[::-1] * np.pi * xt[::-1])
+                    * np.sin(k_vec * np.pi * xt[:2])
+                    * np.cos(k_vec[::-1] * np.pi * xt[1::-1])
                 )
             )
 
@@ -243,7 +254,7 @@ def main_p1(
 
         # dx = xt - xd
         # dvec = 2 * qlist * dx
-        return dvec
+        return np.hstack([np.zeros(1), dvec])
 
     def dldu(t, xt, ut):
         dvec = np.zeros(2)  # replace this
@@ -284,7 +295,7 @@ def main_p1(
         c_list = np.zeros(ks_xy.shape[0])
         f_traj = np.zeros([ks_xy.shape[0], x_traj.shape[0]])
         for i, (k_vec, hk) in enumerate(zip(ks_xy, h_list)):
-            fk_vals = np.prod(np.cos(k_vec * np.pi / L_list * x_traj), axis=1)
+            fk_vals = np.prod(np.cos(k_vec * np.pi / L_list * x_traj[:, :2]), axis=1)
             dfkdxdt = np.zeros(2)
 
             hk = h_list[i]
@@ -297,8 +308,8 @@ def main_p1(
                     -1
                     / hk
                     * k_vec
-                    * np.sin(k_vec * np.pi * xt)
-                    * np.cos(k_vec[::-1] * np.pi * xt[::-1])
+                    * np.sin(k_vec * np.pi * xt[:2])
+                    * np.cos(k_vec[::-1] * np.pi * xt[1::-1])
                 )
                 dfkdxdt += dfkdx * dt
 
@@ -313,9 +324,9 @@ def main_p1(
         # print(dfkdxdt_list)
 
         # compute other variables needed for specifying the dynamics of z(t) and p(t)
-        A_list = np.zeros((tsteps, 2, 2))
-        B_list = np.zeros((tsteps, 2, 2))
-        a_list = np.zeros((tsteps, 2))
+        A_list = np.zeros((tsteps, 3, 3))
+        B_list = np.zeros((tsteps, 3, 2))
+        a_list = np.zeros((tsteps, 3))
         b_list = np.zeros((tsteps, 2))
         for t_idx, t in np.ndenumerate(tlist):
             # t = t_idx * dt
@@ -331,13 +342,13 @@ def main_p1(
         plist = np.diag(P1)
         # p1 = np.zeros(3)  # replace it to be the terminal condition p(T)
 
-        p1 = 2 * plist * (xT - mu2) * (xT_2 - mu3)
+        # p1 = 2 * plist * (xT - mu2) * (xT_2 - mu3)
         # p1 = plist * xT
-        p1 = np.zeros(2)
+        p1 = np.zeros(4)
 
         def zp_dyn(t, zp):
-            zt = zp[:2]
-            pt = zp[2:]
+            zt = zp[:3]
+            pt = zp[3:]
 
             t_idx = int(t / dt)
             At = A_list[t_idx]
@@ -347,8 +358,8 @@ def main_p1(
 
             # M_11 = np.zeros((3,3))  # replace this
             M_11 = At
-            M_12 = np.zeros((2, 2))  # replace this
-            M_21 = np.zeros((2, 2))  # replace this
+            M_12 = np.zeros((3, 3))  # replace this
+            M_21 = np.zeros((3, 3))  # replace this
             # M_22 = np.zeros((3,3))  # replace this
             M_22 = -At.T
             dyn_mat = np.block([[M_11, M_12], [M_21, M_22]])
@@ -366,7 +377,7 @@ def main_p1(
         # and returns a list of [zdot(t), pdot(t)]
         def zp_dyn_list(t_list, zp_list):
             list_len = len(t_list)
-            zp_dot_list = np.zeros((4, list_len))
+            zp_dot_list = np.zeros((6, list_len))
             for _i in range(list_len):
                 zp_dot_list[:, _i] = zp_dyn(t_list[_i], zp_list[:, _i])
             return zp_dot_list
@@ -374,15 +385,15 @@ def main_p1(
         # boundary condition (inputs are [z(0),p(0)] and [z(T),p(T)])
         def zp_bc(zp_0, zp_T):
             # return np.zeros(6)  # replace this
-            z0 = zp_0[:2]
-            p0 = zp_0[2:]
+            z0 = zp_0[:3]
+            p0 = zp_0[3:]
 
-            zT = zp_T[:2]
-            pT = zp_T[2:]
+            zT = zp_T[:3]
+            pT = zp_T[3:]
 
-            bc = np.zeros(4)
-            bc[:2] = z0
-            bc[2:] = np.abs(pT - p1)
+            bc = np.zeros(6)
+            bc[:3] = z0
+            bc[3:] = np.abs(pT - p1)
             # print(bc)
 
             return bc
@@ -394,7 +405,7 @@ def main_p1(
             zp_dyn_list,
             zp_bc,
             tlist,
-            np.zeros(shape=(4, tsteps)),
+            np.zeros(shape=(8, tsteps)),
             verbose=1,
             max_nodes=100,
         )
@@ -408,8 +419,8 @@ def main_p1(
 
         # print(zp_traj)
 
-        z_traj = zp_traj[:, :2]
-        p_traj = zp_traj[:, 2:]
+        z_traj = zp_traj[:, :3]
+        p_traj = zp_traj[:, 3:]
 
         v_traj = np.zeros((tsteps, 2))
         for _i in range(tsteps):
@@ -429,10 +440,11 @@ def main_p1(
 
     # Start iLQR iterations here
 
-    u_traj = init_u_traj.copy()
+    # u_traj = init_u_traj.copy()
+    u_traj = copy.deepcopy(init_u_traj)
     Jlist = np.array([func_J(traj_sim(x0, u_traj), u_traj)])
 
-    for iter in range(max_iter):
+    for iter in range(max_iter * multiplyer):
         print(f"Iteration {iter} ...")
         # forward simulate the current trajectory
         x_traj = traj_sim(x0, u_traj)
@@ -475,8 +487,10 @@ def main_p1(
 
         # update control for the next iteration
         u_traj += gamma * v_traj
-        Jlist = np.hstack([Jlist, func_J(x_traj, u_traj)])
-        print(f"Gamma = {gamma}, J = {Jlist[-1]}")
+        if iter % multiplyer == multiplyer - 1:
+            Jlist = np.hstack([Jlist, func_J(x_traj, u_traj)])
+            print(f"Gamma = {gamma}, J = {Jlist[-1]}")
+
         if gamma < 1e-5:
             break
 
@@ -563,7 +577,7 @@ if __name__ == "__main__":
     #     T=10,
     # )
 
-    #     main_p3(
+    # main_p2(
     #     w1=w1,
     #     w2=w2,
     #     w3=w3,

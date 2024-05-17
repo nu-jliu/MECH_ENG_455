@@ -1,9 +1,13 @@
+import sys
+
 import numpy as np
-import scipy as sp
+import scipy.stats
 
 import matplotlib as mplt
 
-from question1 import *
+import question1 as q1
+import question2 as q2
+import question3 as q3
 
 # import IPython
 
@@ -29,6 +33,10 @@ def init_param():
 
 def main():
     # init_param()
+    if len(sys.argv) < 2:
+        raise RuntimeError("Usage: python homework5.py <problem num>")
+
+    num_p = int(sys.argv[1])
 
     w1, w2, w3 = 0.5, 0.2, 0.3
 
@@ -62,7 +70,7 @@ def main():
         dists.append(dist)
 
     for i in range(100):
-        x_new = dyn_random(None, weights, dists)
+        x_new = q1.dyn_random(None, weights, dists)
         u_traj[i, :] = (x_new - x_curr) / dt
         x_curr = x_new
     # u_traj = (
@@ -75,7 +83,7 @@ def main():
     #     ).T
     # )
     # u_traj = 0.3 * np.array([np.sin(tlist), np.cos(tlist)]).T
-    u_traj = np.tile(np.array([0.05, 0.01]), reps=(tsteps, 1))
+    u_traj = np.tile(np.array([0.005, 0.0015]), reps=(tsteps, 1))
     # u_traj = np.vstack(
     #     (
     #         np.tile(np.array([0.08, -0.02]), reps=(50, 1)),
@@ -88,48 +96,94 @@ def main():
     # )
     # print(u_traj)
 
-    # p1_main_old(
-    #     w1=w1,
-    #     w2=w2,
-    #     w3=w3,
-    #     mu1=mu1,
-    #     mu2=mu2,
-    #     mu3=mu3,
-    #     cov1=cov1,
-    #     cov2=cov2,
-    #     cov3=cov3,
-    #     # init_u_traj=u_traj,
-    #     u_traj=u_traj,
-    #     N_grid=100,
-    #     K_per_dim=10,
-    #     dt=0.1,
-    #     T=10,
-    # )
+    if num_p == 1:
+        q1.main_p1(
+            w1=w1,
+            w2=w2,
+            w3=w3,
+            mu1=mu1,
+            mu2=mu2,
+            mu3=mu3,
+            cov1=cov1,
+            cov2=cov2,
+            cov3=cov3,
+            init_u_traj=u_traj,
+            q=0.1,
+            R_u=np.diag([0.001, 0.001]),
+            P1=np.diag([2.0, 2.0]),
+            Q_z=np.diag([0.01, 0.001]),
+            R_v=np.diag([0.001, 0.001]),
+            x0=np.array([0.3, 0.3]),
+            # u_traj=u_traj,
+            N_grid=100,
+            K_per_dim=10,
+            dt=0.1,
+            T=T,
+            max_iter=100,
+            gamma_0=0.001,
+            fig_filename="problem1.png",
+        )
 
-    main_p1(
-        w1=w1,
-        w2=w2,
-        w3=w3,
-        mu1=mu1,
-        mu2=mu2,
-        mu3=mu3,
-        cov1=cov1,
-        cov2=cov2,
-        cov3=cov3,
-        init_u_traj=u_traj,
-        q=0.01,
-        R_u=np.diag([0.001, 0.001]),
-        P1=np.diag([2.0, 2.0]),
-        Q_z=np.diag([0.01, 0.001]),
-        R_v=np.diag([0.001, 0.001]),
-        # u_traj=u_traj,
-        N_grid=100,
-        K_per_dim=10,
-        dt=0.1,
-        T=T,
-        max_iter=200,
-        gamma_0=0.001,
-    )
+    elif num_p == 2:
+        q2.main_p2(
+            w1=w1,
+            w2=w2,
+            w3=w3,
+            mu1=mu1,
+            mu2=mu2,
+            mu3=mu3,
+            cov1=cov1,
+            cov2=cov2,
+            cov3=cov3,
+            init_u_traj=u_traj,
+            q=0.1,
+            R_u=np.diag([0.01, 0.01]),
+            P1=np.diag([2.0, 2.0]),
+            Q_z=np.diag([0.01, 0.01, 0.001, 0.001]),
+            R_v=np.diag([0.01, 0.01]),
+            x0=np.array([0.3, 0.3, 0.0, 0.0]),
+            # u_traj=u_traj,
+            N_grid=100,
+            K_per_dim=10,
+            dt=0.1,
+            T=T,
+            max_iter=100,
+            gamma_0=0.001,
+            fig_filename="problem2.png",
+            multiplyer=10,
+        )
+
+    elif num_p == 3:
+        q3.main_p3(
+            w1=w1,
+            w2=w2,
+            w3=w3,
+            mu1=mu1,
+            mu2=mu2,
+            mu3=mu3,
+            cov1=cov1,
+            cov2=cov2,
+            cov3=cov3,
+            init_u_traj=u_traj,
+            q=0.1,
+            R_u=np.diag([0.01, 0.01]),
+            P1=np.diag([2.0, 2.0]),
+            Q_z=np.diag([0.01, 0.01, 0.00, 0.00]),
+            R_v=np.diag([0.01, 0.01]),
+            x0=np.array([0.3, 0.3, np.pi / 2.0]),
+            # u_traj=u_traj,
+            N_grid=100,
+            K_per_dim=10,
+            dt=0.1,
+            T=T,
+            max_iter=100,
+            gamma_0=0.001,
+            fig_filename="problem2.png",
+            multiplyer=10,
+        )
+
+    else:
+        raise RuntimeError("Invalid argument")
 
 
 if __name__ == "__main__":
